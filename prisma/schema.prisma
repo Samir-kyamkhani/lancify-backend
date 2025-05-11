@@ -1,0 +1,361 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------ MODELS ------------------------
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String?
+  profession   String?
+  companyName  String?  @map("company_name")
+  email        String?  @unique
+  googleId     String?  @unique @map("google_id")
+  mobileNumber String?  @unique @map("mobile_number")
+  passwordHash String?  @map("password_hash")
+  role         Role?
+  adminAddress String?  @map("admin_address")
+  avatarUrl    String?  @map("avatar_url")
+  accessToken  String?
+  refreshToken String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @map("updated_at")
+
+  permissions      UserPermission[]
+  tasks            Task[]
+  invoices         Invoice[]
+  socialAccounts   SocialMediaAccount[]
+  chatsCreated     Chat[]               @relation("ChatCreator")
+  messages         Message[]            @relation("MessageSender")
+  chatParticipants ChatParticipant[]
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  status      PermissionStatus
+  name        String
+  description String?
+
+  users UserPermission[]
+}
+
+model UserPermission {
+  userId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+}
+
+model Client {
+  id        String       @id @default(uuid()) @db.Uuid
+  name      String?
+  email     String?
+  phone     String?
+  company   String?
+  country   String?
+  status    ClientStatus
+  notes     String?
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @default(now()) @map("updated_at")
+
+  projects  Project[]
+  proposals Proposal[]
+  invoices  Invoice[]
+  tags      ClientTag[]
+  meetings  Meeting[]
+}
+
+model Project {
+  id          String        @id @default(uuid()) @db.Uuid
+  clientId    String        @db.Uuid
+  title       String?
+  description String?
+  startDate   DateTime?     @map("start_date")
+  endDate     DateTime?     @map("end_date")
+  status      ProjectStatus
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @default(now()) @map("updated_at")
+
+  client   Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tasks    Task[]
+  invoices Invoice[]
+  tags     ProjectTag[]
+}
+
+model Task {
+  id          String       @id @default(uuid()) @db.Uuid
+  projectId   String       @db.Uuid
+  userId      String?      @db.Uuid
+  title       String?
+  description String?
+  status      TaskStatus
+  priority    TaskPriority
+  dueDate     DateTime?    @map("due_date")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @default(now()) @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Proposal {
+  id               String         @id @default(uuid()) @db.Uuid
+  clientId         String         @db.Uuid
+  projectName      String?        @map("project_name")
+  date             DateTime?
+  amount           Float?
+  status           ProposalStatus
+  agency           String?
+  tagId            String?        @db.Uuid
+  clientNeeds      String?        @map("client_needs")
+  proposedServices String?        @map("proposed_services")
+  tone             Tone?
+  generatedContent String?        @map("generated_content")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @default(now()) @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tag    Tag?   @relation(fields: [tagId], references: [id])
+}
+
+model Invoice {
+  id            String        @id @default(uuid()) @db.Uuid
+  usersId       String        @db.Uuid
+  clientId      String        @db.Uuid
+  projectId     String        @db.Uuid
+  issueDate     DateTime?     @map("issue_date")
+  dueDate       DateTime?     @map("due_date")
+  amount        Float?
+  total         Float?
+  discount      Float?
+  status        InvoiceStatus
+  notes         String?
+  clientAddress String?       @map("client_address")
+  tax           String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @default(now()) @map("updated_at")
+
+  user     User                 @relation(fields: [usersId], references: [id])
+  client   Client               @relation(fields: [clientId], references: [id])
+  project  Project              @relation(fields: [projectId], references: [id])
+  payments PaymentsWithdrawal[]
+}
+
+model PaymentsWithdrawal {
+  id                String        @id @default(uuid()) @db.Uuid
+  invoiceId         String        @db.Uuid
+  paymentDate       DateTime?     @map("payment_date")
+  upi               String?
+  paypalEmail       String?       @map("paypal_email")
+  stripeAccountId   String?       @map("stripe_account_id")
+  amount            Float?
+  accountHolderName String?       @map("account_holder_name")
+  accountNumber     BigInt?       @map("account_number")
+  ifscCode          String?       @map("ifsc_code")
+  bankName          String?       @map("bank_name")
+  paymentMethod     PaymentMethod
+  transactionId     String?
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model SocialMediaAccount {
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String         @db.Uuid
+  platform        SocialPlatform
+  username        String?
+  profileImageUrl String?        @map("profile_image_url")
+  authToken       String?        @map("auth_token")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduledPosts ScheduledPost[]
+}
+
+model ScheduledPost {
+  id                   String     @id @default(uuid()) @db.Uuid
+  socialMediaAccountId String     @db.Uuid
+  contentText          String?    @map("content_text")
+  mediaUrl             String?    @map("media_url")
+  scheduledAt          DateTime?  @map("scheduled_at")
+  status               PostStatus
+  createdAt            DateTime   @default(now()) @map("created_at")
+
+  socialMediaAccount SocialMediaAccount @relation(fields: [socialMediaAccountId], references: [id], onDelete: Cascade)
+}
+
+model Tag {
+  id   String  @id @default(uuid()) @db.Uuid
+  name String?
+
+  projectTags ProjectTag[]
+  clientTags  ClientTag[]
+  proposals   Proposal[]
+}
+
+model ProjectTag {
+  projectId String @db.Uuid
+  tagId     String @db.Uuid
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, tagId])
+}
+
+model ClientTag {
+  clientId String @db.Uuid
+  tagId    String @db.Uuid
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([clientId, tagId])
+}
+
+model Meeting {
+  id          String   @id @default(uuid()) @db.Uuid
+  clientId    String   @db.Uuid
+  scheduledAt DateTime @map("scheduled_at")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model Chat {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String?
+  isGroup   Boolean
+  createdBy String?  @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  creator      User?             @relation("ChatCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  participants ChatParticipant[]
+  messages     Message[]
+}
+
+model ChatParticipant {
+  chatId   String   @db.Uuid
+  userId   String   @db.Uuid
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([chatId, userId])
+}
+
+model Message {
+  id          String      @id @default(uuid()) @db.Uuid
+  chatId      String      @db.Uuid
+  senderId    String?     @db.Uuid
+  content     String?
+  messageType MessageType
+  mediaUrl    String?     @map("media_url")
+  seen        Boolean     @default(false)
+  sentAt      DateTime    @default(now()) @map("sent_at")
+  updatedAt   DateTime    @default(now()) @map("updated_at")
+
+  chat   Chat  @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender User? @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+}
+
+// ------------------------ ENUMS ------------------------
+
+enum Role {
+  admin
+  member
+  user
+}
+
+enum PermissionStatus {
+  active
+  inactive
+}
+
+enum ClientStatus {
+  lead
+  active
+  on_hold
+  completed
+}
+
+enum ProjectStatus {
+  not_started
+  in_progress
+  on_hold
+  completed
+  cancelled
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  done
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+}
+
+enum ProposalStatus {
+  draft
+  sent
+  accepted
+  rejected
+}
+
+enum Tone {
+  formal
+  casual
+  friendly
+}
+
+enum InvoiceStatus {
+  draft
+  pending
+  paid
+  overdue
+  cancelled
+}
+
+enum PaymentMethod {
+  stripe
+  paypal
+  upi
+  bank_transfer
+}
+
+enum SocialPlatform {
+  twitter
+  linkedin
+  facebook
+  instagram
+}
+
+enum PostStatus {
+  scheduled
+  posted
+  failed
+}
+
+enum MessageType {
+  text
+  image
+  file
+  video
+  system
+}
