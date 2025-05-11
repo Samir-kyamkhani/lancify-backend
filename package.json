@@ -1,5 +1,5 @@
 {
-  "name": "xnor",
+  "name": "lancify",
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
@@ -9,7 +9,7 @@
   },
   "author": "Samir khan",
   "license": "ISC",
-  "description": "xnor api",
+  "description": "lancify api",
   "devDependencies": {
     "nodemon": "^3.1.9",
     "prettier": "^3.4.2",
