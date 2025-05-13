@@ -36,6 +36,14 @@ model User {
   chatParticipants ChatParticipant[]
 }
 
+model EmailOtp {
+  email     String   @id
+  otp       String   @db.VarChar(6) // assuming 6-digit OTP
+  expiresAt DateTime
+
+  @@unique([email]) // Ensures one OTP per email at a time
+}
+
 model Permission {
   id          String           @id @default(uuid()) @db.Uuid
   status      PermissionStatus

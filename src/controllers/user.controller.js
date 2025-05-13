@@ -1,3 +1,4 @@
+// controllers/signup.js
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -6,9 +7,10 @@ import {
   generateAccessToken,
   generateRefreshToken,
   hashPassword,
+  verifyGoogleToken,
 } from "../utils/lib.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import prisma from "../database/db.config.js";
+import { sendOtp } from "../utils/sendOtp.js";
 
 const cookieOptions = {
   httpOnly: true,
@@ -18,23 +20,43 @@ const cookieOptions = {
 };
 
 const signup = asyncHandler(async (req, res) => {
-  const {
-    name,
-    profession,
-    companyName,
-    email,
-    mobileNumber,
-    password,
-    googleId,
-    adminAddress,
-  } = req.body;
+  let { name, profession, email, mobileNumber, password, googleId, otp } =
+    req.body;
 
-  if (!email || (!password && !googleId)) {
-    throw new ApiError(400, "Email and password or Google ID are required.");
+  if (!(googleId || (email && password))) {
+    throw new ApiError(400, "Google signup or email + password is required.");
   }
 
-  if (!validator.isEmail(email)) {
-    throw new ApiError(400, "Invalid email format.");
+  let isGoogleSignUp = false;
+  let isEmailVerified = false;
+  let passwordHash = null;
+
+  if (googleId) {
+    const googleUser = await verifyGoogleToken(googleId);
+
+    if (!googleUser?.emailVerified) {
+      throw new ApiError(403, "Google account email not verified.");
+    }
+
+    googleId = googleUser.googleId;
+    email = googleUser.email;
+    name = name || googleUser.name;
+    isGoogleSignUp = true;
+  } else {
+    if (!validator.isEmail(email)) {
+      throw new ApiError(400, "Invalid email format.");
+    }
+
+    await sendOtp(email);
+
+    if (!validator.isStrongPassword(password)) {
+      throw new ApiError(
+        400,
+        "Password must be at least 8 characters long and include letters, numbers, and symbols.",
+      );
+    }
+
+    passwordHash = await hashPassword(password);
   }
 
   if (mobileNumber && !validator.isMobilePhone(mobileNumber, "any")) {
@@ -58,35 +80,10 @@ const signup = asyncHandler(async (req, res) => {
     );
   }
 
-  let passwordHash = null;
-  let isGoogleSignUp = false;
-  let isEmailVerified = false;
-
-  if (googleId) {
-    isGoogleSignUp = true;
-    isEmailVerified = true;
-  } else {
-    if (!validator.isStrongPassword(password)) {
-      throw new ApiError(
-        400,
-        "Password must be at least 8 characters long and include letters, numbers, and symbols.",
-      );
-    }
-    passwordHash = await hashPassword(password);
-  }
-
-  const avatarLocalPath = req.files?.avatarUrl?.[0]?.path;
-  let avatarUrl = null;
-  if (avatarLocalPath) {
-    const uploadResult = await uploadOnCloudinary(avatarLocalPath);
-    avatarUrl = uploadResult?.secure_url || null;
-  }
-
   const newUser = await prisma.user.create({
     data: {
       name,
       profession,
-      companyName,
       email,
       googleId,
       isGoogleSignUp,
@@ -94,8 +91,6 @@ const signup = asyncHandler(async (req, res) => {
       mobileNumber,
       passwordHash,
       role: "admin",
-      avatarUrl,
-      adminAddress,
       refreshToken: "",
     },
   });

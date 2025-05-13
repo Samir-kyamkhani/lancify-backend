@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ApiError } from "./ApiError.js";
+import { OAuth2Client } from "google-auth-library";
 
 export const hashPassword = async (password) => {
   if (!password) {
@@ -45,3 +46,31 @@ export const generateRefreshToken = (id, email) => {
     },
   );
 };
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+export const verifyGoogleToken = async (token) => {
+  const ticket = await client.verifyIdToken({
+    idToken: token,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  const payload = ticket.getPayload();
+
+  return {
+    googleId: payload.sub,
+    email: payload.email,
+    name: payload.name,
+    avatarUrl: payload.picture,
+    emailVerified: payload.email_verified,
+  };
+};
+
+// utils/otp.js
+export function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
+}
+
+export function getExpiry(minutes = 10) {
+  return new Date(Date.now() + minutes * 60 * 1000);
+}
