@@ -10,21 +10,23 @@ datasource db {
 // ------------------------ MODELS ------------------------
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  name         String?
-  profession   String?
-  companyName  String?  @map("company_name")
-  email        String?  @unique
-  googleId     String?  @unique @map("google_id")
-  mobileNumber String?  @unique @map("mobile_number")
-  passwordHash String?  @map("password_hash")
-  role         Role?
-  adminAddress String?  @map("admin_address")
-  avatarUrl    String?  @map("avatar_url")
-  accessToken  String?
-  refreshToken String?
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @map("updated_at")
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String?
+  profession      String?
+  companyName     String?  @map("company_name")
+  email           String   @unique
+  googleId        String?  @unique @map("google_id")
+  isGoogleSignUp  Boolean  @default(false) @map("is_google_signup")
+  isEmailVerified Boolean  @default(false) @map("is_email_verified")
+  mobileNumber    String?  @unique @map("mobile_number")
+  passwordHash    String?  @map("password_hash")
+  role            Role     @default(admin)
+  adminAddress    String?  @map("admin_address")
+  avatarUrl       String?  @map("avatar_url")
+  accessToken     String?  @map("access_token")
+  refreshToken    String?  @map("refresh_token")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   permissions      UserPermission[]
   tasks            Task[]
