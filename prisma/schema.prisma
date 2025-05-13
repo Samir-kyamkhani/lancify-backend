@@ -23,7 +23,6 @@ model User {
   role            Role     @default(admin)
   adminAddress    String?  @map("admin_address")
   avatarUrl       String?  @map("avatar_url")
-  accessToken     String?  @map("access_token")
   refreshToken    String?  @map("refresh_token")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")

@@ -33,7 +33,7 @@ export const generateAccessToken = (id, email, role) => {
   );
 };
 
-const generateRefreshToken = (id, email) => {
+export const generateRefreshToken = (id, email) => {
   return jwt.sign(
     {
       id,
