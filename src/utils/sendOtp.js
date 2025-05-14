@@ -3,6 +3,7 @@ import validator from "validator";
 import prisma from "../database/db.config.js";
 import { generateOTP, getExpiry } from "./lib.js";
 import { ApiError } from "./ApiError.js";
+import { ApiResponse } from "./ApiResponse.js";
 
 // Transporter setup
 const transporter = nodemailer.createTransport({
@@ -13,14 +14,16 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendOtp = async (email) => {
+export const sendOtp = async (email, res) => {
   if (!validator.isEmail(email)) {
     throw new ApiError(400, "Invalid email format.");
   }
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
-    throw new ApiError(400, "User already exists with this email.");
+    return res
+      .status(400)
+      .json(new ApiResponse(400, "User already exists with this email."));
   }
 
   const otp = generateOTP();

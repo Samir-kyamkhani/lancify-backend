@@ -6,8 +6,8 @@ import { verifyOtp } from "../controllers/verifyOtp.controller.js";
 
 const router = Router();
 
-router.route("/signup").post(signup);
-router.route("/login").post(login);
-router.post("/verify-otp", verifyOtp);
+router.route("/auth/signup").post(signup);
+router.route("/auth/login").post(login);
+router.post("/auth/verify-otp", verifyOtp);
 
 export default router;

@@ -46,7 +46,7 @@ const signup = asyncHandler(async (req, res) => {
       throw new ApiError(400, "Invalid email format.");
     }
 
-    await sendOtp(email);
+    await sendOtp(email, res);
 
     if (!validator.isStrongPassword(password)) {
       throw new ApiError(
