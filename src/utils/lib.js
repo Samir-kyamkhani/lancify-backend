@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ApiError } from "./ApiError.js";
-import { OAuth2Client } from "google-auth-library";
+import axios from "axios";
 
 export const hashPassword = async (password) => {
   if (!password) {
@@ -47,26 +47,24 @@ export const generateRefreshToken = (id, email) => {
   );
 };
 
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-export const verifyGoogleToken = async (token) => {
-  const ticket = await client.verifyIdToken({
-    idToken: token,
-    audience: process.env.GOOGLE_CLIENT_ID,
+export const verifyGoogleAccessToken = async (accessToken) => {
+  const res = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
 
-  const payload = ticket.getPayload();
+  const data = res.data;
 
   return {
-    googleId: payload.sub,
-    email: payload.email,
-    name: payload.name,
-    avatarUrl: payload.picture,
-    emailVerified: payload.email_verified,
+    googleId: data.sub,
+    email: data.email,
+    name: data.name,
+    avatarUrl: data.picture,
+    emailVerified: data.email_verified,
   };
 };
 
-// utils/otp.js
 export function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
 }
