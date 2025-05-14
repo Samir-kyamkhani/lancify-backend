@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import validator from "validator";
 import {
+  comparePassword,
   generateAccessToken,
   generateRefreshToken,
   hashPassword,
@@ -125,4 +126,65 @@ const signup = asyncHandler(async (req, res) => {
     );
 });
 
-export { signup };
+const login = asyncHandler(async (req, res) => {
+  const { email, password, googleId } = req.body;
+
+  if (!(googleId || (email && password))) {
+    throw new ApiError(400, "Google login or email + password is required.");
+  }
+
+  let user;
+
+  if (googleId) {
+    const googleUser = await verifyGoogleToken(googleId);
+    if (!googleUser?.emailVerified) {
+      throw new ApiError(403, "Google account email not verified.");
+    }
+
+    user = await prisma.user.findUnique({
+      where: { email: googleUser.email },
+    });
+
+    if (!user || !user.isGoogleSignUp) {
+      throw new ApiError(404, "No Google account found. Please sign up first.");
+    }
+  } else {
+    if (!validator.isEmail(email)) {
+      throw new ApiError(400, "Invalid email format.");
+    }
+
+    user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user || !user.passwordHash) {
+      throw new ApiError(401, "Invalid credentials.");
+    }
+
+    const isMatch = await comparePassword(password, user.passwordHash);
+    if (!isMatch) {
+      throw new ApiError(401, "Invalid credentials.");
+    }
+  }
+
+  const refreshToken = generateRefreshToken(user.id, user.email);
+  const accessToken = generateAccessToken(user.id, user.email, user.role);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { refreshToken },
+  });
+
+  const { passwordHash: _, refreshToken: __, ...userSafe } = user;
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
+    .json(
+      new ApiResponse(200, "Login successful.", {
+        user: userSafe,
+        accessToken,
+      }),
+    );
+});
+
+export { signup, login };
