@@ -1,14 +1,12 @@
-// controllers/signup.js
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import validator from "validator";
 import {
-  comparePassword,
   generateAccessToken,
   generateRefreshToken,
   hashPassword,
-  verifyGoogleToken,
+  verifyGoogleAccessToken,
 } from "../utils/lib.js";
 import prisma from "../database/db.config.js";
 import { sendOtp } from "../utils/sendOtp.js";
@@ -33,7 +31,7 @@ const signup = asyncHandler(async (req, res) => {
   let passwordHash = null;
 
   if (googleId) {
-    const googleUser = await verifyGoogleToken(googleId);
+    const googleUser = await verifyGoogleAccessToken(googleId);
 
     if (!googleUser?.emailVerified) {
       throw new ApiError(403, "Google account email not verified.");
