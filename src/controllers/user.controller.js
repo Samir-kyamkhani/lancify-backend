@@ -154,12 +154,12 @@ const login = asyncHandler(async (req, res) => {
       where: { email: googleUser.email },
     });
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: { isGoogleSignUp: true },
     });
 
-    if (!user || !user.isGoogleSignUp) {
+    if (!updatedUser || !updatedUser.isGoogleSignUp) {
       return ApiError.send(
         res,
         404,
