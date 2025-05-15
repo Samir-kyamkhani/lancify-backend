@@ -11,13 +11,7 @@ export const hashPassword = async (password) => {
 };
 
 export const comparePassword = async (password, hashedPassword) => {
-  const isMatch = await bcrypt.compare(password, hashedPassword);
-
-  if (!isMatch) {
-    return ApiError.send(res, 401, "Invalid password");
-  }
-
-  return isMatch;
+  return await bcrypt.compare(password, hashedPassword);
 };
 
 export const generateAccessToken = (id, email, role) => {
