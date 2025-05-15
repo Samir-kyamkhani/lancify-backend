@@ -14,7 +14,7 @@ export const comparePassword = async (password, hashedPassword) => {
   const isMatch = await bcrypt.compare(password, hashedPassword);
 
   if (!isMatch) {
-    throw new ApiError(401, "Invalid password");
+    return ApiError.send(res, 401, "Invalid password");
   }
 
   return isMatch;

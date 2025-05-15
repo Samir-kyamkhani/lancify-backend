@@ -9,11 +9,11 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   const record = await prisma.emailOtp.findUnique({ where: { email } });
 
   if (!record || record.otp !== otp) {
-    throw new ApiError(400, "Invalid OTP.");
+    return ApiError.send(res, 400, "Invalid OTP.");
   }
 
   if (record.expiresAt < new Date()) {
-    throw new ApiError(400, "OTP has expired.");
+    return ApiError.send(res, 400, "OTP has expired.");
   }
 
   await prisma.emailOtp.delete({ where: { email } });

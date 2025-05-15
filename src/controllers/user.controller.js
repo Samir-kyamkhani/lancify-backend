@@ -23,7 +23,7 @@ const signup = asyncHandler(async (req, res) => {
     req.body;
 
   if (!(googleId || (email && password))) {
-    throw new ApiError(400, "Google signup or email + password is required.");
+    return ApiError.send(res, 400, "Google signup or email + password is required.");
   }
 
   let isGoogleSignUp = false;
@@ -34,7 +34,7 @@ const signup = asyncHandler(async (req, res) => {
     const googleUser = await verifyGoogleAccessToken(googleId);
 
     if (!googleUser?.emailVerified) {
-      throw new ApiError(403, "Google account email not verified.");
+      return ApiError.send(res, 403, "Google account email not verified.");
     }
 
     googleId = googleUser.googleId;
@@ -43,13 +43,13 @@ const signup = asyncHandler(async (req, res) => {
     isGoogleSignUp = true;
   } else {
     if (!validator.isEmail(email)) {
-      throw new ApiError(400, "Invalid email format.");
+      return ApiError.send(res, 400, "Invalid email format.");
     }
 
     await sendOtp(email, res);
 
     if (!validator.isStrongPassword(password)) {
-      throw new ApiError(
+      return ApiError.send(res, 
         400,
         "Password must be at least 8 characters long and include letters, numbers, and symbols.",
       );
@@ -59,7 +59,7 @@ const signup = asyncHandler(async (req, res) => {
   }
 
   if (mobileNumber && !validator.isMobilePhone(mobileNumber, "any")) {
-    throw new ApiError(400, "Invalid mobile number.");
+    return ApiError.send(res, 400, "Invalid mobile number.");
   }
 
   const existingUser = await prisma.user.findFirst({
@@ -73,7 +73,7 @@ const signup = asyncHandler(async (req, res) => {
   });
 
   if (existingUser) {
-    throw new ApiError(
+    return ApiError.send(res, 
       400,
       "User already exists with the given email, mobile number, or Google ID.",
     );
@@ -95,7 +95,7 @@ const signup = asyncHandler(async (req, res) => {
   });
 
   if (!newUser) {
-    throw new ApiError(500, "User could not be created.");
+    return ApiError.send(res, 500, "User could not be created.");
   }
 
   const refreshToken = generateRefreshToken(newUser.id, newUser.email);
@@ -128,7 +128,7 @@ const login = asyncHandler(async (req, res) => {
   const { email, password, googleId } = req.body;
 
   if (!(googleId || (email && password))) {
-    throw new ApiError(400, "Google login or email + password is required.");
+    return ApiError.send(res, 400, "Google login or email + password is required.");
   }
 
   let user;
@@ -136,7 +136,7 @@ const login = asyncHandler(async (req, res) => {
   if (googleId) {
     const googleUser = await verifyGoogleToken(googleId);
     if (!googleUser?.emailVerified) {
-      throw new ApiError(403, "Google account email not verified.");
+      return ApiError.send(res, 403, "Google account email not verified.");
     }
 
     user = await prisma.user.findUnique({
@@ -144,22 +144,22 @@ const login = asyncHandler(async (req, res) => {
     });
 
     if (!user || !user.isGoogleSignUp) {
-      throw new ApiError(404, "No Google account found. Please sign up first.");
+      return ApiError.send(res, 404, "No Google account found. Please sign up first.");
     }
   } else {
     if (!validator.isEmail(email)) {
-      throw new ApiError(400, "Invalid email format.");
+      return ApiError.send(res, 400, "Invalid email format.");
     }
 
     user = await prisma.user.findUnique({ where: { email } });
 
     if (!user || !user.passwordHash) {
-      throw new ApiError(401, "Invalid credentials.");
+      return ApiError.send(res, 401, "Invalid credentials.");
     }
 
     const isMatch = await comparePassword(password, user.passwordHash);
     if (!isMatch) {
-      throw new ApiError(401, "Invalid credentials.");
+      return ApiError.send(res, 401, "Invalid credentials.");
     }
   }
 
