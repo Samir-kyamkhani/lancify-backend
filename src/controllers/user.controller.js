@@ -20,67 +20,51 @@ const cookieOptions = {
 };
 
 const signup = asyncHandler(async (req, res) => {
-  let { name, profession, email, mobileNumber, password, googleId, otp } =
+  let { name, profession, email, mobileNumber, password, googleIdToken, otp } =
     req.body;
 
-  if (!(googleId || (email && password))) {
-    return ApiError.send(
-      res,
-      400,
-      "Google sign-up or email + password is required.",
-    );
-  }
-
+  let googleId;
   let isGoogleSignUp = false;
   let isEmailVerified = false;
   let passwordHash = null;
 
-  if (googleId) {
-    const googleUser = await verifyGoogleIdToken(googleId);
+  // 1. Handle Google sign-up if token provided
+  if (googleIdToken) {
+    const googleUser = await verifyGoogleIdToken(googleIdToken);
     if (!googleUser?.emailVerified) {
       return ApiError.send(res, 403, "Google account email not verified.");
     }
+
     googleId = googleUser.googleId;
     email = googleUser.email;
     name = name || googleUser.name;
     isGoogleSignUp = true;
-  } else {
-    if (!validator.isEmail(email)) {
-      return ApiError.send(res, 400, "Invalid email format.");
-    }
-    if (!otp) {
-      await sendOtp(email);
-      return res
-        .status(200)
-        .json(new ApiResponse(200, "OTP sent to your email."));
-    }
-    const otpVerified = await verifyOtpCode(email, otp);
-    if (!otpVerified) {
-      return ApiError.send(res, 400, "Invalid or expired OTP.");
-    }
     isEmailVerified = true;
-
-    if (!validator.isStrongPassword(password)) {
-      return ApiError.send(
-        res,
-        400,
-        "Password must be at least 8 characters long and include letters, numbers, and symbols.",
-      );
-    }
-    passwordHash = await hashPassword(password);
   }
 
+  // 2. Check required sign-up method
+  if (!isGoogleSignUp && !(email && password)) {
+    return ApiError.send(
+      res,
+      400,
+      "Either Google sign-up or email + password is required.",
+    );
+  }
+
+  // 3. Validate mobile number early
   if (mobileNumber && !validator.isMobilePhone(mobileNumber, "any")) {
     return ApiError.send(res, 400, "Invalid mobile number.");
   }
 
+  // ✅ 4. Check if user already exists BEFORE OTP is sent
+  const orConditions = [];
+  if (email) orConditions.push({ email });
+  if (googleId) orConditions.push({ googleId });
+  if (mobileNumber) orConditions.push({ mobileNumber });
+
   const existingUser = await prisma.user.findFirst({
     where: {
-      OR: [
-        { email },
-        ...(googleId ? [{ googleId }] : []),
-        ...(mobileNumber ? [{ mobileNumber }] : []),
-      ],
+      OR: orConditions,
     },
   });
 
@@ -92,6 +76,36 @@ const signup = asyncHandler(async (req, res) => {
     );
   }
 
+  // 5. Validate email & password if email sign-up
+  if (!isGoogleSignUp) {
+    if (!validator.isEmail(email)) {
+      return ApiError.send(res, 400, "Invalid email format.");
+    }
+    if (!validator.isStrongPassword(password)) {
+      return ApiError.send(
+        res,
+        400,
+        "Password must be at least 8 characters long and include letters, numbers, and symbols.",
+      );
+    }
+
+    if (!otp) {
+      await sendOtp(email);
+      return res
+        .status(200)
+        .json(new ApiResponse(200, "OTP sent to your email."));
+    }
+
+    const otpVerified = await verifyOtpCode(email, otp);
+    if (!otpVerified) {
+      return ApiError.send(res, 400, "Invalid or expired OTP.");
+    }
+
+    passwordHash = await hashPassword(password);
+    isEmailVerified = true;
+  }
+
+  // 6. Create the user
   const newUser = await prisma.user.create({
     data: {
       name,
@@ -107,6 +121,7 @@ const signup = asyncHandler(async (req, res) => {
     },
   });
 
+  // 7. Generate tokens
   const refreshToken = generateRefreshToken(newUser.id, newUser.email);
   const accessToken = generateAccessToken(
     newUser.id,
