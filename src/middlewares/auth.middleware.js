@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { ApiError } from "../utils/ApiError.js";
 
-const authenticateUser = async (req, __, next) => {
+const authMiddleware = async (req, __, next) => {
   try {
     const accessToken =
       req.cookies?.accessToken ||
@@ -30,4 +30,4 @@ const authenticateUser = async (req, __, next) => {
   }
 };
 
-export { authenticateUser };
+export { authMiddleware };

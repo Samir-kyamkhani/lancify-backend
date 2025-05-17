@@ -1,13 +1,24 @@
 import { Router } from "express";
-// import { upload } from "../middleware/multer.middleware.js";
-// import { verifyJWT } from "../middleware/auth.middleware.js";
-import { login, signup } from "../controllers/user.controller.js";
-import { verifyOtp } from "../controllers/verifyOtp.controller.js";
+
+// Controllers
+import {
+  forgotPassword,
+  login,
+  resendOtp,
+  resetPassword,
+  signup,
+} from "../controllers/user.controller.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-router.route("/auth/signup").post(signup);
-router.route("/auth/login").post(login);
-router.post("/auth/verify-otp", verifyOtp);
+router.post("/signup", signup);
+
+router.post("/login", login);
+
+router.post("/forgot-password", forgotPassword);
+
+router.post("/resend-otp", resendOtp);
+router.post("/reset-password", authMiddleware, resetPassword);
 
 export default router;
