@@ -10,22 +10,23 @@ datasource db {
 // ------------------------ MODELS ------------------------
 
 model User {
-  id              String   @id @default(uuid()) @db.Uuid
+  id              String           @id @default(uuid()) @db.Uuid
   name            String?
   profession      String?
-  companyName     String?  @map("company_name")
-  email           String   @unique
-  googleId        String?  @unique @map("google_id")
-  isGoogleSignUp  Boolean  @default(false) @map("is_google_signup")
-  isEmailVerified Boolean  @default(false) @map("is_email_verified")
-  mobileNumber    String?  @unique @map("mobile_number")
-  passwordHash    String?  @map("password_hash")
-  role            Role     @default(admin)
-  adminAddress    String?  @map("admin_address")
-  avatarUrl       String?  @map("avatar_url")
-  refreshToken    String?  @map("refresh_token")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  status          PermissionStatus @default(active)
+  companyName     String?          @map("company_name")
+  email           String           @unique
+  googleId        String?          @unique @map("google_id")
+  isGoogleSignUp  Boolean          @default(false) @map("is_google_signup")
+  isEmailVerified Boolean          @default(false) @map("is_email_verified")
+  mobileNumber    String?          @unique @map("mobile_number")
+  passwordHash    String?          @map("password_hash")
+  role            Role             @default(admin)
+  adminAddress    String?          @map("admin_address")
+  avatarUrl       String?          @map("avatar_url")
+  refreshToken    String?          @map("refresh_token")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   permissions      UserPermission[]
   tasks            Task[]
@@ -45,11 +46,8 @@ model EmailOtp {
 }
 
 model Permission {
-  id          String           @id @default(uuid()) @db.Uuid
-  status      PermissionStatus
-  name        String
-  description String?
-
+  id    String           @id @default(uuid()) @db.Uuid
+  name  String?          @unique
   users UserPermission[]
 }
 
@@ -73,7 +71,7 @@ model Client {
   status    ClientStatus
   notes     String?
   createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @default(now()) @map("updated_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
 
   projects  Project[]
   proposals Proposal[]
@@ -91,7 +89,7 @@ model Project {
   endDate     DateTime?     @map("end_date")
   status      ProjectStatus
   createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @default(now()) @map("updated_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
 
   client   Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   tasks    Task[]
@@ -109,7 +107,7 @@ model Task {
   priority    TaskPriority
   dueDate     DateTime?    @map("due_date")
   createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @default(now()) @map("updated_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -129,7 +127,7 @@ model Proposal {
   tone             Tone?
   generatedContent String?        @map("generated_content")
   createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @default(now()) @map("updated_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
   tag    Tag?   @relation(fields: [tagId], references: [id])
@@ -137,7 +135,7 @@ model Proposal {
 
 model Invoice {
   id            String        @id @default(uuid()) @db.Uuid
-  usersId       String        @db.Uuid
+  userId        String        @db.Uuid
   clientId      String        @db.Uuid
   projectId     String        @db.Uuid
   issueDate     DateTime?     @map("issue_date")
@@ -150,9 +148,9 @@ model Invoice {
   clientAddress String?       @map("client_address")
   tax           String?
   createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @default(now()) @map("updated_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
 
-  user     User                 @relation(fields: [usersId], references: [id])
+  user     User                 @relation(fields: [userId], references: [id])
   client   Client               @relation(fields: [clientId], references: [id])
   project  Project              @relation(fields: [projectId], references: [id])
   payments PaymentsWithdrawal[]
@@ -247,7 +245,7 @@ model Chat {
   isGroup   Boolean
   createdBy String?  @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   creator      User?             @relation("ChatCreator", fields: [createdBy], references: [id], onDelete: SetNull)
   participants ChatParticipant[]
@@ -266,45 +264,40 @@ model ChatParticipant {
 }
 
 model Message {
-  id          String      @id @default(uuid()) @db.Uuid
-  chatId      String      @db.Uuid
-  senderId    String?     @db.Uuid
-  content     String?
-  messageType MessageType
-  mediaUrl    String?     @map("media_url")
-  seen        Boolean     @default(false)
-  sentAt      DateTime    @default(now()) @map("sent_at")
-  updatedAt   DateTime    @default(now()) @map("updated_at")
+  id       String   @id @default(uuid()) @db.Uuid
+  chatId   String   @db.Uuid
+  senderId String   @db.Uuid
+  content  String
+  sentAt   DateTime @default(now()) @map("sent_at")
 
-  chat   Chat  @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  sender User? @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
 }
 
 // ------------------------ ENUMS ------------------------
-
-enum Role {
-  admin
-  member
-  user
-}
 
 enum PermissionStatus {
   active
   inactive
 }
 
+enum Role {
+  admin
+  user
+  moderator
+}
+
 enum ClientStatus {
-  lead
   active
-  on_hold
-  completed
+  inactive
+  potential
+  lost
 }
 
 enum ProjectStatus {
-  not_started
-  in_progress
-  on_hold
+  active
   completed
+  on_hold
   cancelled
 }
 
@@ -312,12 +305,14 @@ enum TaskStatus {
   todo
   in_progress
   done
+  blocked
 }
 
 enum TaskPriority {
   low
   medium
   high
+  critical
 }
 
 enum ProposalStatus {
@@ -325,16 +320,10 @@ enum ProposalStatus {
   sent
   accepted
   rejected
-}
-
-enum Tone {
-  formal
-  casual
-  friendly
+  expired
 }
 
 enum InvoiceStatus {
-  draft
   pending
   paid
   overdue
@@ -342,29 +331,32 @@ enum InvoiceStatus {
 }
 
 enum PaymentMethod {
-  stripe
-  paypal
   upi
+  paypal
+  stripe
   bank_transfer
 }
 
 enum SocialPlatform {
-  twitter
-  linkedin
   facebook
+  twitter
   instagram
+  linkedin
+  youtube
+  tiktok
+  pinterest
 }
 
 enum PostStatus {
   scheduled
   posted
   failed
+  cancelled
 }
 
-enum MessageType {
-  text
-  image
-  file
-  video
-  system
+enum Tone {
+  formal
+  informal
+  friendly
+  professional
 }
