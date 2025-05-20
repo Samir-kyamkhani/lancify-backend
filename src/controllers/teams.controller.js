@@ -19,6 +19,7 @@ const cookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
+// Create Member
 export const memberSignup = asyncHandler(async (req, res) => {
   let { name, email, password, role, status, permissions } = req.body;
 
@@ -142,4 +143,168 @@ export const memberSignup = asyncHandler(async (req, res) => {
         permissions: userPermissions,
       }),
     );
+});
+
+// Update Member
+export const updateMember = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  let { name, status, permissions } = req.body;
+
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user || user.role !== "member") {
+    return ApiError.send(res, 404, "Member not found.");
+  }
+
+  if (status && !ALLOWED_STATUSES.includes(status)) {
+    return ApiError.send(res, 400, "Invalid status specified.");
+  }
+
+  let permissionRecords = [];
+  if (permissions) {
+    if (
+      !Array.isArray(permissions) ||
+      !permissions.every((p) => typeof p === "string")
+    ) {
+      return ApiError.send(
+        res,
+        400,
+        "Permissions must be an array of strings.",
+      );
+    }
+
+    permissionRecords = await prisma.permission.findMany({
+      where: { name: { in: permissions } },
+    });
+
+    if (permissionRecords.length !== permissions.length) {
+      return ApiError.send(res, 400, "Some permissions are invalid.");
+    }
+  }
+
+  await prisma.user.update({
+    where: { id },
+    data: {
+      name,
+      status,
+      ...(permissionRecords.length && {
+        permissions: {
+          deleteMany: {}, // Remove old permissions
+          create: permissionRecords.map((perm) => ({
+            permission: { connect: { id: perm.id } },
+          })),
+        },
+      }),
+    },
+  });
+
+  const updatedUser = await prisma.user.findUnique({
+    where: { id },
+    include: {
+      permissions: {
+        include: { permission: true },
+      },
+    },
+  });
+
+  const { passwordHash, refreshToken, ...userSafe } = updatedUser;
+  const updatedPermissions = updatedUser.permissions.map(
+    (p) => p.permission.name,
+  );
+
+  return res.status(200).json(
+    new ApiResponse(200, "Member updated successfully.", {
+      ...userSafe,
+      permissions: updatedPermissions,
+    }),
+  );
+});
+
+// Delete Member
+export const deleteMember = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user || user.role !== "member") {
+    return ApiError.send(res, 404, "Member not found.");
+  }
+
+  await prisma.user.delete({ where: { id } });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "Member deleted successfully."));
+});
+
+// Get Single Member
+export const getSingleMember = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: {
+      permissions: {
+        include: { permission: true },
+      },
+    },
+  });
+
+  if (!user || user.role !== "member") {
+    return ApiError.send(res, 404, "Member not found.");
+  }
+
+  const { passwordHash, refreshToken, ...userSafe } = user;
+  const permissions = user.permissions.map((p) => p.permission.name);
+
+  return res.status(200).json(
+    new ApiResponse(200, "Member fetched successfully.", {
+      ...userSafe,
+      permissions,
+    }),
+  );
+});
+
+// Get All Members
+export const getAllMembers = asyncHandler(async (req, res) => {
+  const users = await prisma.user.findMany({
+    where: { role: "member" },
+    include: {
+      permissions: {
+        include: { permission: true },
+      },
+    },
+  });
+
+  const formattedUsers = users.map((user) => {
+    const { passwordHash, refreshToken, ...userSafe } = user;
+    const permissions = user.permissions.map((p) => p.permission.name);
+    return { ...userSafe, permissions };
+  });
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, "Members fetched successfully.", formattedUsers),
+    );
+});
+
+// Get All Users
+export const getAllUsers = asyncHandler(async (req, res) => {
+  const users = await prisma.user.findMany({
+    where: { role: "user" },
+    include: {
+      permissions: {
+        include: { permission: true },
+      },
+    },
+  });
+
+  const formattedUsers = users.map((user) => {
+    const { passwordHash, refreshToken, ...userSafe } = user;
+    const permissions = user.permissions.map((p) => p.permission.name);
+    return { ...userSafe, permissions };
+  });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "Users fetched successfully.", formattedUsers));
 });

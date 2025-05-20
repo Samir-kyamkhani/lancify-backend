@@ -9,7 +9,7 @@ import {
   signup,
 } from "../controllers/user.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
-import { memberSignup } from "../controllers/teams.controller.js";
+import { deleteMember, getAllMembers, getAllUsers, getSingleMember, memberSignup, updateMember } from "../controllers/teams.controller.js";
 import { authorizeRolesMiddleware } from "../middlewares/authorizeRoles.js";
 
 const router = Router();
@@ -24,6 +24,11 @@ router.post("/resend-otp", resendOtp);
 router.post("/reset-password", authMiddleware, resetPassword);
 
 //team
-router.post("/add-team-member",authMiddleware, authorizeRolesMiddleware("admin"), memberSignup);
+router.post("/add-team-member", memberSignup);
+router.get("/get-all-members", getAllMembers);
+router.get("/get-all-users", getAllUsers);
+router.get("/get-member/:id", getSingleMember);
+router.put("/update-member/:id", updateMember);
+router.delete("/delete-member/:id", deleteMember);
 
 export default router;
