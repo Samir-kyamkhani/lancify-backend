@@ -12,8 +12,7 @@ const isValidTags = (tags) =>
 const validStatuses = ["active", "inactive", "potential", "lost"];
 
 export const addClient = asyncHandler(async (req, res) => {
-  const { name, email, phone, company, country, status, notes, tags } =
-    req.body;
+  const { name, email, phone, company, country, status, tags } = req.body;
 
   if (!name || !email || !phone || !company || !country || !status || !tags) {
     return ApiError.send(res, 400, "All fields are required.");
@@ -71,7 +70,7 @@ export const addClient = asyncHandler(async (req, res) => {
       company,
       country,
       status,
-      notes,
+
       tags: {
         create: tagRecords.map((tag) => ({
           tag: {
@@ -99,16 +98,13 @@ export const addClient = asyncHandler(async (req, res) => {
 
 export const updateClient = asyncHandler(async (req, res) => {
   const clientId = req.params.id;
-  const { name, email, phone, company, country, status, notes, tags } =
-    req.body;
+  const { name, email, phone, company, country, status, tags } = req.body;
 
   if (!clientId || !validator.isUUID(clientId)) {
     return ApiError.send(res, 400, "Invalid or missing client ID.");
   }
 
-  if (
-    ![name, email, phone, company, country, status, notes, tags].some(Boolean)
-  ) {
+  if (![name, email, phone, company, country, status, tags].some(Boolean)) {
     return ApiError.send(
       res,
       400,
@@ -170,7 +166,6 @@ export const updateClient = asyncHandler(async (req, res) => {
     ...(company !== undefined && { company }),
     ...(country !== undefined && { country }),
     ...(status !== undefined && { status }),
-    ...(notes !== undefined && { notes }),
   };
 
   if (tags) {
