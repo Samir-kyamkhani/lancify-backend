@@ -4,19 +4,25 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import prisma from "../database/db.config.js";
 import validator from "validator";
 
+// Enum for client status
+const ClientStatus = {
+  Lead: "Lead",
+  Active: "Active",
+  Completed: "Completed",
+  OnHold: "OnHold",
+};
+
+const isValidStatus = (status) => Object.values(ClientStatus).includes(status);
+
 // Helper to validate tags array
 const isValidTags = (tags) =>
   Array.isArray(tags) && tags.every((tag) => typeof tag === "string");
 
-// Allowed client statuses from your Prisma enum
-const validStatuses = ["active", "inactive", "potential", "lost"];
-
 export const addClient = asyncHandler(async (req, res) => {
-  const { name, email, phone, company, country, status, notes, tags } =
-    req.body;
+  const { name, email, phone, country, status, tags } = req.body;
 
-  if (!name || !email || !phone || !company || !country || !status || !tags) {
-    return ApiError.send(res, 400, "All fields are required.");
+  if (!name || !email || !phone || !country || !status || !tags) {
+    return ApiError.send(res, 400, "All required fields must be provided.");
   }
 
   if (!validator.isEmail(email)) {
@@ -27,29 +33,27 @@ export const addClient = asyncHandler(async (req, res) => {
     return ApiError.send(res, 400, "Invalid phone number.");
   }
 
-  if (!validStatuses.includes(status)) {
-    return ApiError.send(
-      res,
-      400,
-      `Invalid status. Allowed: ${validStatuses.join(", ")}`,
-    );
-  }
-
   if (!isValidTags(tags)) {
     return ApiError.send(res, 400, "Tags must be an array of strings.");
   }
 
+  if (!isValidStatus(status)) {
+    return ApiError.send(
+      res,
+      400,
+      `Invalid status. Must be one of: ${Object.values(ClientStatus).join(", ")}.`,
+    );
+  }
+
   const existingClient = await prisma.client.findFirst({
-    where: {
-      OR: [{ email }, { phone }],
-    },
+    where: { OR: [{ email }, { phone }] },
   });
 
   if (existingClient) {
     return ApiError.send(
       res,
       400,
-      "Client already exists with the given email or phone.",
+      "Client already exists with given email or phone.",
     );
   }
 
@@ -68,46 +72,40 @@ export const addClient = asyncHandler(async (req, res) => {
       name,
       email,
       phone,
-      company,
       country,
       status,
-      notes,
       tags: {
         create: tagRecords.map((tag) => ({
-          tag: {
-            connect: { id: tag.id },
-          },
+          tag: { connect: { id: tag.id } },
         })),
       },
     },
     include: {
-      tags: {
-        include: { tag: true },
-      },
+      tags: { include: { tag: true } },
     },
   });
 
-  const clientWithTags = {
-    ...newClient,
-    tags: newClient.tags.map((ct) => ct.tag),
-  };
-
-  return res
-    .status(201)
-    .json(new ApiResponse(201, "Client created successfully.", clientWithTags));
+  return res.status(201).json(
+    new ApiResponse(201, "Client created successfully.", {
+      ...newClient,
+      tags: newClient.tags.map((ct) => ct.tag),
+    }),
+  );
 });
 
 export const updateClient = asyncHandler(async (req, res) => {
   const clientId = req.params.id;
-  const { name, email, phone, company, country, status, notes, tags } =
-    req.body;
 
-  if (!clientId || !validator.isUUID(clientId)) {
+  if (!clientId || !validator.isUUID(clientId, 4)) {
     return ApiError.send(res, 400, "Invalid or missing client ID.");
   }
 
+  const { name, email, phone, country, status, tags } = req.body;
+
   if (
-    ![name, email, phone, company, country, status, notes, tags].some(Boolean)
+    [name, email, phone, country, status, tags].every(
+      (value) => value === undefined,
+    )
   ) {
     return ApiError.send(
       res,
@@ -124,16 +122,16 @@ export const updateClient = asyncHandler(async (req, res) => {
     return ApiError.send(res, 400, "Invalid phone number.");
   }
 
-  if (status && !validStatuses.includes(status)) {
+  if (tags && !isValidTags(tags)) {
+    return ApiError.send(res, 400, "Tags must be an array of strings.");
+  }
+
+  if (status !== undefined && !isValidStatus(status)) {
     return ApiError.send(
       res,
       400,
-      `Invalid status. Allowed: ${validStatuses.join(", ")}`,
+      `Invalid status. Must be one of: ${Object.values(ClientStatus).join(", ")}.`,
     );
-  }
-
-  if (tags && !isValidTags(tags)) {
-    return ApiError.send(res, 400, "Tags must be an array of strings.");
   }
 
   const existingClient = await prisma.client.findUnique({
@@ -154,6 +152,7 @@ export const updateClient = asyncHandler(async (req, res) => {
         NOT: { id: clientId },
       },
     });
+
     if (conflictClient) {
       return ApiError.send(
         res,
@@ -167,10 +166,8 @@ export const updateClient = asyncHandler(async (req, res) => {
     ...(name !== undefined && { name }),
     ...(email !== undefined && { email }),
     ...(phone !== undefined && { phone }),
-    ...(company !== undefined && { company }),
     ...(country !== undefined && { country }),
     ...(status !== undefined && { status }),
-    ...(notes !== undefined && { notes }),
   };
 
   if (tags) {
@@ -197,26 +194,22 @@ export const updateClient = asyncHandler(async (req, res) => {
     where: { id: clientId },
     data: updateData,
     include: {
-      tags: {
-        include: { tag: true },
-      },
+      tags: { include: { tag: true } },
     },
   });
 
-  const clientWithTags = {
-    ...updatedClient,
-    tags: updatedClient.tags.map((ct) => ct.tag),
-  };
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, "Client updated successfully.", clientWithTags));
+  return res.status(200).json(
+    new ApiResponse(200, "Client updated successfully.", {
+      ...updatedClient,
+      tags: updatedClient.tags.map((ct) => ct.tag),
+    }),
+  );
 });
 
 export const getSingleClient = asyncHandler(async (req, res) => {
   const clientId = req.params.id;
 
-  if (!clientId || !validator.isUUID(clientId)) {
+  if (!clientId || !validator.isUUID(clientId, 4)) {
     return ApiError.send(res, 400, "Invalid or missing client ID.");
   }
 
@@ -231,14 +224,12 @@ export const getSingleClient = asyncHandler(async (req, res) => {
     return ApiError.send(res, 404, "Client not found.");
   }
 
-  const clientWithTags = {
-    ...client,
-    tags: client.tags.map((ct) => ct.tag),
-  };
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, "Client fetched successfully.", clientWithTags));
+  return res.status(200).json(
+    new ApiResponse(200, "Client fetched successfully.", {
+      ...client,
+      tags: client.tags.map((ct) => ct.tag),
+    }),
+  );
 });
 
 export const allClients = asyncHandler(async (req, res) => {
@@ -247,7 +238,6 @@ export const allClients = asyncHandler(async (req, res) => {
       tags: { include: { tag: true } },
     },
   });
-  console.log(clients);
 
   const clientsWithTags = clients.map((client) => ({
     ...client,
@@ -264,7 +254,7 @@ export const allClients = asyncHandler(async (req, res) => {
 export const deleteClient = asyncHandler(async (req, res) => {
   const clientId = req.params.id;
 
-  if (!clientId || !validator.isUUID(clientId)) {
+  if (!clientId || !validator.isUUID(clientId, 4)) {
     return ApiError.send(res, 400, "Invalid or missing client ID.");
   }
 

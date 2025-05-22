@@ -94,7 +94,6 @@ model Project {
   client   Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   tasks    Task[]
   invoices Invoice[]
-  tags     ProjectTag[]
 }
 
 model Task {
@@ -204,19 +203,8 @@ model Tag {
   id   String  @id @default(uuid()) @db.Uuid
   name String?
 
-  projectTags ProjectTag[]
   clientTags  ClientTag[]
   proposals   Proposal[]
-}
-
-model ProjectTag {
-  projectId String @db.Uuid
-  tagId     String @db.Uuid
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([projectId, tagId])
 }
 
 model ClientTag {
@@ -288,16 +276,16 @@ enum Role {
 }
 
 enum ClientStatus {
-  active
-  inactive
-  potential
-  lost
+  Lead
+  Active
+  Completed
+  OnHold
 }
 
 enum ProjectStatus {
-  active
+  in_progress
+  not_started
   completed
-  on_hold
   cancelled
 }
 
