@@ -91,7 +91,7 @@ model Project {
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
-  client   Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   tasks    Task[]
   invoices Invoice[]
 }
@@ -150,29 +150,30 @@ model Invoice {
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
-  user     User                 @relation(fields: [userId], references: [id])
-  client   Client               @relation(fields: [clientId], references: [id])
-  project  Project              @relation(fields: [projectId], references: [id])
-  payments PaymentsWithdrawal[]
+  user     User      @relation(fields: [userId], references: [id])
+  client   Client    @relation(fields: [clientId], references: [id])
+  project  Project   @relation(fields: [projectId], references: [id])
+  payments Payment[]
 }
 
-model PaymentsWithdrawal {
-  id                String        @id @default(uuid()) @db.Uuid
-  invoiceId         String        @db.Uuid
-  paymentDate       DateTime?     @map("payment_date")
-  upi               String?
-  paypalEmail       String?       @map("paypal_email")
-  stripeAccountId   String?       @map("stripe_account_id")
-  amount            Float?
-  accountHolderName String?       @map("account_holder_name")
-  accountNumber     BigInt?       @map("account_number")
-  ifscCode          String?       @map("ifsc_code")
-  bankName          String?       @map("bank_name")
-  paymentMethod     PaymentMethod
-  transactionId     String?
-  createdAt         DateTime      @default(now()) @map("created_at")
+model Payment {
+  id            String        @id @default(uuid()) @db.Uuid
+  invoiceId     String        @db.Uuid
+  method        PaymentMethod
+  transactionId String?       @map("transaction_id")
+  amount        Float
+  status        PaymentStatus
+  paidAt        DateTime?     @map("paid_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
 }
 
 model SocialMediaAccount {
@@ -204,8 +205,8 @@ model Tag {
   id   String  @id @default(uuid()) @db.Uuid
   name String?
 
-  clientTags  ClientTag[]
-  proposals   ProposalTag[]
+  clientTags ClientTag[]
+  proposals  ProposalTag[]
 }
 
 model ProposalTag {
