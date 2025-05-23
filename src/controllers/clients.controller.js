@@ -19,11 +19,10 @@ const isValidTags = (tags) =>
   Array.isArray(tags) && tags.every((tag) => typeof tag === "string");
 
 export const addClient = asyncHandler(async (req, res) => {
-  const { name, email, phone, company, country, status, notes, tags } =
-    req.body;
+  const { name, email, phone, company, country, status, tags } = req.body;
 
   if (!name || !email || !phone || !country || !status || !tags) {
-    return ApiError.send(res, 400, "All required fields must be provided.");
+    return ApiError.send(res, 400, "All fields are required.");
   }
 
   if (!validator.isEmail(email)) {
@@ -32,10 +31,6 @@ export const addClient = asyncHandler(async (req, res) => {
 
   if (!validator.isMobilePhone(phone, "any")) {
     return ApiError.send(res, 400, "Invalid phone number.");
-  }
-
-  if (!isValidTags(tags)) {
-    return ApiError.send(res, 400, "Tags must be an array of strings.");
   }
 
   if (!isValidStatus(status)) {
@@ -73,9 +68,9 @@ export const addClient = asyncHandler(async (req, res) => {
       name,
       email,
       phone,
+      company,
       country,
       status,
-      notes,
       tags: {
         create: tagRecords.map((tag) => ({
           tag: { connect: { id: tag.id } },
@@ -97,18 +92,13 @@ export const addClient = asyncHandler(async (req, res) => {
 
 export const updateClient = asyncHandler(async (req, res) => {
   const clientId = req.params.id;
-  const { name, email, phone, company, country, status, notes, tags } =
-    req.body;
+  const { name, email, phone, company, country, status, tags } = req.body;
 
   if (!clientId || !validator.isUUID(clientId, 4)) {
     return ApiError.send(res, 400, "Invalid or missing client ID.");
   }
 
-  const { name, email, phone, country, status, tags } = req.body;
-
-  if (
-    ![name, email, phone, company, country, status, notes, tags].some(Boolean)
-  ) {
+  if (![name, email, phone, company, country, status, tags].some(Boolean)) {
     return ApiError.send(
       res,
       400,
@@ -168,6 +158,7 @@ export const updateClient = asyncHandler(async (req, res) => {
     ...(name !== undefined && { name }),
     ...(email !== undefined && { email }),
     ...(phone !== undefined && { phone }),
+    ...(company !== undefined && { company }),
     ...(country !== undefined && { country }),
     ...(status !== undefined && { status }),
   };
