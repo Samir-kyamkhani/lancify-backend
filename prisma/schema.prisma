@@ -36,6 +36,13 @@ model User {
   messages         Message[]            @relation("MessageSender")
   chatParticipants ChatParticipant[]
   Proposal         Proposal[]
+
+  country         String? // detect or ask
+  isInternational Boolean @default(false) @map("is_international")
+
+  // relations
+  wallet  AdminWallet?
+  payouts PayoutRequest[]
 }
 
 model EmailOtp {
@@ -150,30 +157,47 @@ model Invoice {
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
-  user     User      @relation(fields: [userId], references: [id])
-  client   Client    @relation(fields: [clientId], references: [id])
-  project  Project   @relation(fields: [projectId], references: [id])
-  payments Payment[]
+  user    User    @relation(fields: [userId], references: [id])
+  client  Client  @relation(fields: [clientId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
 }
 
-model Payment {
-  id            String        @id @default(uuid()) @db.Uuid
-  invoiceId     String        @db.Uuid
-  method        PaymentMethod
-  transactionId String?       @map("transaction_id")
-  amount        Float
-  status        PaymentStatus
-  paidAt        DateTime?     @map("paid_at")
-  createdAt     DateTime      @default(now()) @map("created_at")
+model PayoutRequest {
+  id          String        @id @default(uuid()) @db.Uuid
+  userId      String        @db.Uuid
+  amount      Float
+  method      PaymentMethod // razorpay, stripe, paypal
+  status      PayoutStatus
+  requestedAt DateTime      @default(now())
+  processedAt DateTime?
 
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-enum PaymentStatus {
-  pending
-  completed
-  failed
-  refunded
+model WalletTransaction {
+  id          String            @id @default(uuid()) @db.Uuid
+  walletId    String            @db.Uuid
+  type        TransactionType
+  amount      Float
+  currency    String
+  description String?
+  status      TransactionStatus
+  paymentRef  String? // Gateway transaction ID
+  method      PaymentMethod
+  createdAt   DateTime          @default(now())
+
+  wallet AdminWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+}
+
+model AdminWallet {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
+  balance   Float    @default(0.0)
+  currency  String   @default("INR")
+  updatedAt DateTime @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
 }
 
 model SocialMediaAccount {
@@ -276,6 +300,24 @@ model Message {
 }
 
 // ------------------------ ENUMS ------------------------
+
+enum TransactionType {
+  credit
+  debit
+}
+
+enum TransactionStatus {
+  pending
+  completed
+  failed
+}
+
+enum PayoutStatus {
+  requested
+  processing
+  completed
+  failed
+}
 
 enum PermissionStatus {
   active
