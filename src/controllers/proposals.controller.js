@@ -30,7 +30,7 @@ export const createProposal = asyncHandler(async (req, res) => {
     proposedServices,
     tone,
     generatedContent,
-    tags = [],
+    expertise: tags = [],
   } = req.body;
 
   const { id: userId } = req.user;
@@ -67,8 +67,11 @@ export const createProposal = asyncHandler(async (req, res) => {
   }
 
   // ========== Type & Format Validations ==========
-  if (amount !== undefined && (typeof amount !== "number" || isNaN(amount))) {
-    return ApiError.send(res, 400, "Amount must be a valid number.");
+  if (amount !== undefined) {
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount)) {
+      return ApiError.send(res, 400, "Amount must be a valid number.");
+    }
   }
 
   if (date && isNaN(Date.parse(date))) {
@@ -112,7 +115,7 @@ export const createProposal = asyncHandler(async (req, res) => {
       userId,
       projectName,
       date: date ? new Date(date) : undefined,
-      amount,
+      amount: amount !== undefined ? parseFloat(amount) : undefined,
       agency,
       status: status.trim(),
       clientNeeds,
@@ -188,7 +191,7 @@ export const getProposalById = asyncHandler(async (req, res) => {
 
 // ========== UPDATE ==========
 export const updateProposal = asyncHandler(async (req, res) => {
-  const id = req.params.id;
+  const { id } = req.params;
   const {
     projectName,
     amount,
@@ -199,44 +202,44 @@ export const updateProposal = asyncHandler(async (req, res) => {
     proposedServices,
     tone,
     generatedContent,
-    tags = [],
+    expertise: tags = [],
   } = req.body;
 
-  // ✅ Validate ID
-  if (!validator.isUUID(id))
-    return ApiError.send(res, 400, "Invalid proposal ID");
-
-  // ✅ Validate amount
-  if (amount !== undefined && (typeof amount !== "number" || isNaN(amount))) {
-    return ApiError.send(res, 400, "Amount must be a valid number.");
+  // ========== ID Validation ==========
+  if (!validator.isUUID(id)) {
+    return ApiError.send(res, 400, "Invalid proposal ID format.");
   }
 
-  // ✅ Validate date
+  // ========== Type & Format Validations ==========
+  if (amount !== undefined) {
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount)) {
+      return ApiError.send(res, 400, "Amount must be a valid number.");
+    }
+  }
+
   if (date && isNaN(Date.parse(date))) {
     return ApiError.send(res, 400, "Invalid date format.");
   }
 
-  // ✅ Validate status
   if (status && !ALLOWED_STATUSES.includes(status.trim())) {
     return ApiError.send(
       res,
       400,
-      `Invalid status. Allowed: ${ALLOWED_STATUSES.join(", ")}`,
+      `Invalid status. Allowed values: ${ALLOWED_STATUSES.join(", ")}`,
     );
   }
 
-  // ✅ Validate tone
   if (tone && !ALLOWED_TONES.includes(tone.trim())) {
     return ApiError.send(
       res,
       400,
-      `Invalid tone. Allowed: ${ALLOWED_TONES.join(", ")}`,
+      `Invalid tone. Allowed values: ${ALLOWED_TONES.join(", ")}`,
     );
   }
 
-  // ✅ Validate tags
-  if (!Array.isArray(tags)) {
-    return ApiError.send(res, 400, "Tags must be an array.");
+  if (tags && !Array.isArray(tags)) {
+    return ApiError.send(res, 400, "Tags must be an array of strings.");
   }
 
   for (const tag of tags) {
@@ -245,37 +248,41 @@ export const updateProposal = asyncHandler(async (req, res) => {
     }
   }
 
-  // ✅ Find proposal
-  const proposal = await prisma.proposal.findUnique({ where: { id } });
-  if (!proposal) return ApiError.send(res, 400, "Proposal not found.");
+  // ========== Existence Check ==========
+  const existingProposal = await prisma.proposal.findUnique({
+    where: { id },
+  });
+  if (!existingProposal) {
+    return ApiError.send(res, 400, "Proposal not found.");
+  }
 
-  // ✅ Handle tags
+  // ========== Process Tags ==========
   const tagRecords = await Promise.all(
     tags.map(async (tagName) => {
-      const trimmed = tagName.trim();
-      let tag = await prisma.tag.findFirst({ where: { name: trimmed } });
+      const trimmedName = tagName.trim();
+      let tag = await prisma.tag.findFirst({ where: { name: trimmedName } });
       if (!tag) {
-        tag = await prisma.tag.create({ data: { name: trimmed } });
+        tag = await prisma.tag.create({ data: { name: trimmedName } });
       }
       return tag;
     }),
   );
 
-  // ✅ Update proposal
+  // ========== Update Proposal ==========
   await prisma.proposal.update({
     where: { id },
     data: {
       projectName,
-      amount,
+      amount: amount !== undefined ? parseFloat(amount) : undefined,
       date: date ? new Date(date) : undefined,
       agency,
-      status: status?.trim(),
+      status: status ? status.trim() : undefined,
       clientNeeds,
       proposedServices,
-      tone: tone?.trim(),
+      tone: tone ? tone.trim() : undefined,
       generatedContent,
       tags: {
-        deleteMany: {}, // delete all old tags
+        deleteMany: {}, // remove all existing tag relations
         create: tagRecords.map((tag) => ({
           tag: { connect: { id: tag.id } },
         })),
@@ -283,8 +290,8 @@ export const updateProposal = asyncHandler(async (req, res) => {
     },
   });
 
-  // ✅ Fetch updated proposal
-  const updated = await prisma.proposal.findUnique({
+  // ========== Fetch & Return Updated Proposal ==========
+  const updatedProposal = await prisma.proposal.findUnique({
     where: { id },
     include: {
       tags: { include: { tag: true } },
@@ -292,11 +299,10 @@ export const updateProposal = asyncHandler(async (req, res) => {
     },
   });
 
-  // ✅ Return updated response
-  res.status(200).json(
+  return res.status(200).json(
     new ApiResponse(200, "Proposal updated successfully", {
-      ...updated,
-      tags: updated.tags.map((t) => t.tag),
+      ...updatedProposal,
+      tags: updatedProposal.tags.map((t) => t.tag),
     }),
   );
 });
