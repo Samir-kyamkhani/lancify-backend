@@ -15,7 +15,14 @@ const isValidProjectStatus = (status) =>
   Object.values(ProjectStatus).includes(status);
 
 export const addProject = asyncHandler(async (req, res) => {
-  const { clientId, title, description, startDate, endDate, status } = req.body;
+  const {
+    client: clientId,
+    title,
+    description,
+    startDate,
+    endDate,
+    status,
+  } = req.body;
 
   if (!clientId || !validator.isUUID(clientId, 4)) {
     return ApiError.send(res, 400, "Valid clientId is required.");

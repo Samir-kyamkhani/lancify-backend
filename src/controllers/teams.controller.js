@@ -308,3 +308,12 @@ export const getAllUsers = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, "Users fetched successfully.", formattedUsers));
 });
+
+export const getAllPermissions = asyncHandler(async (req, res) => {
+  const permissions = await prisma.permission.findMany();
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, "Permissions fetched successfully.", permissions),
+    );
+});

@@ -9,8 +9,15 @@ const ALLOWED_PRIORITIES = ["low", "medium", "high", "critical"];
 
 // ========== Create Task ==========
 export const createTask = asyncHandler(async (req, res) => {
-  const { projectId, userId, title, description, status, priority, dueDate } =
-    req.body;
+  const {
+    project: projectId,
+    assignee: userId,
+    title,
+    description,
+    status,
+    priority,
+    dueDate,
+  } = req.body;
 
   // Required field validation
   if (!projectId || !title || !status || !priority || !userId) {
@@ -60,10 +67,10 @@ export const createTask = asyncHandler(async (req, res) => {
   }
 
   // Ensure only admins can assign tasks
-  const requester = req.user;
-  if (!requester || requester.role !== "admin") {
-    return ApiError.send(res, 403, "Only admins can assign tasks.");
-  }
+  // const requester = req.user;
+  // if (!requester || requester.role !== "admin") {
+  //   return ApiError.send(res, 403, "Only admins can assign tasks.");
+  // }
 
   // Check existence
   const project = await prisma.project.findUnique({ where: { id: projectId } });
@@ -98,7 +105,7 @@ export const createTask = asyncHandler(async (req, res) => {
 
   res
     .status(201)
-    .json(new ApiResponse(201, task, "Task created successfully."));
+    .json(new ApiResponse(201, "Task created successfully.", task));
 });
 
 // ========== Get All ==========
@@ -112,7 +119,7 @@ export const getAllTasks = asyncHandler(async (req, res) => {
 
   res
     .status(200)
-    .json(new ApiResponse(200, tasks, "Tasks fetched successfully."));
+    .json(new ApiResponse(200, "Tasks fetched successfully.", tasks));
 });
 
 // ========== Get by ID ==========
@@ -131,7 +138,7 @@ export const getTaskById = asyncHandler(async (req, res) => {
 
   res
     .status(200)
-    .json(new ApiResponse(200, task, "Task fetched successfully."));
+    .json(new ApiResponse(200, "Task fetched successfully.", task));
 });
 
 // ========== Update ==========
@@ -179,10 +186,10 @@ export const updateTask = asyncHandler(async (req, res) => {
 
   let assignedUser = null;
   if (userId) {
-    const requester = req.user;
-    if (!requester || requester.role !== "admin") {
-      return ApiError.send(res, 403, "Only admins can reassign tasks.");
-    }
+    // const requester = req.user;
+    // if (!requester || requester.role !== "admin") {
+    //   return ApiError.send(res, 403, "Only admins can reassign tasks.");
+    // }
 
     assignedUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!assignedUser) {
@@ -213,7 +220,7 @@ export const updateTask = asyncHandler(async (req, res) => {
 
   res
     .status(200)
-    .json(new ApiResponse(200, updatedTask, "Task updated successfully."));
+    .json(new ApiResponse(200, "Task updated successfully.", updatedTask));
 });
 
 // ========== Delete ==========

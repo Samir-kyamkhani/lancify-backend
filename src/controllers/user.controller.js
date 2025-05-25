@@ -311,4 +311,18 @@ const resetPassword = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "Password changed successfully."));
 });
 
+export const getAllMultipalUsers = asyncHandler(async (req, res) => {
+  const allUsers = await prisma.user.findMany();
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        "All Users like admin, member and client.",
+        allUsers,
+      ),
+    );
+});
+
 export { signup, login, forgotPassword, resendOtp, resetPassword };
