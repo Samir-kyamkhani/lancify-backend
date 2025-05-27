@@ -141,21 +141,23 @@ model Proposal {
 }
 
 model Invoice {
-  id            String        @id @default(uuid()) @db.Uuid
-  userId        String        @db.Uuid
-  clientId      String        @db.Uuid
-  projectId     String        @db.Uuid
-  issueDate     DateTime?     @map("issue_date")
-  dueDate       DateTime?     @map("due_date")
-  amount        Float?
-  total         Float?
-  discount      Float?
-  status        InvoiceStatus
-  notes         String?
-  clientAddress String?       @map("client_address")
-  tax           String?
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  id             String        @id @default(uuid()) @db.Uuid
+  invid          String        @unique
+  userId         String        @db.Uuid
+  clientId       String        @db.Uuid
+  projectId      String        @db.Uuid
+  issueDate      DateTime?     @map("issue_date")
+  dueDate        DateTime?     @map("due_date")
+  amount         Float?
+  total          Float?
+  discount       Float?
+  status         InvoiceStatus
+  paymentGateway PaymentMethod
+  notes          String?
+  clientAddress  String?       @map("client_address")
+  tax            String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
   user    User    @relation(fields: [userId], references: [id])
   client  Client  @relation(fields: [clientId], references: [id])
@@ -371,10 +373,12 @@ enum InvoiceStatus {
   paid
   overdue
   cancelled
+  sent
 }
 
 enum PaymentMethod {
   upi
+  razorpay
   paypal
   stripe
   bank_transfer

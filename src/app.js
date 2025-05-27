@@ -22,6 +22,7 @@ import clientsRouter from "./routes/clients.routes.js";
 import proposalsRouter from "./routes/proposals.routes.js";
 import tasksRouter from "./routes/tasksRouter.routes.js";
 import projectsRouter from "./routes/projects.routes.js";
+import paymentRouter from "./routes/payment.routes.js";
 
 // routes declaration
 app.use("/api/v1/auth", userRouter);
@@ -29,5 +30,6 @@ app.use("/api/v1/client", clientsRouter);
 app.use("/api/v1/proposals", proposalsRouter);
 app.use("/api/v1/projects", projectsRouter);
 app.use("/api/v1/tasks", tasksRouter);
+app.use("/api/v1/payments", paymentRouter);
 
 export default app;
